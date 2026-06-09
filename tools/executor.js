@@ -380,6 +380,7 @@ const toolMap = {
       repeatDeployCooldownMinFeeEarnedPct: ["management", "repeatDeployCooldownMinFeeEarnedPct"],
       minVolumeToRebalance: ["management", "minVolumeToRebalance"],
       stopLossPct: ["management", "stopLossPct"],
+      dynamicStopLoss: ["management", "dynamicStopLoss"],
       takeProfitPct: ["management", "takeProfitPct"],
       takeProfitFeePct: ["management", "takeProfitPct"],
       trailingTakeProfit: ["management", "trailingTakeProfit"],

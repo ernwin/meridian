@@ -104,7 +104,11 @@ export const config = {
     repeatDeployCooldownScope: u.repeatDeployCooldownScope ?? "token", // pool | token | both
     repeatDeployCooldownMinFeeEarnedPct: u.repeatDeployCooldownMinFeeEarnedPct ?? u.repeatDeployCooldownMinFeeYieldPct ?? 0,
     minVolumeToRebalance:  u.minVolumeToRebalance  ?? 1000,
+    // Static fallback stop loss (used when DSL is off or no per-position override exists).
+    // DSL = Dynamic Stop Loss: per-position threshold auto-computed at deploy time from
+    // downside coverage of the deployed bin range (see state.js#computeDynamicStopLoss).
     stopLossPct:           u.stopLossPct           ?? u.emergencyPriceDropPct ?? -50,
+    dynamicStopLoss:       u.dynamicStopLoss       ?? true,
     takeProfitPct:         u.takeProfitPct         ?? u.takeProfitFeePct ?? 5,
     minFeePerTvl24h:       u.minFeePerTvl24h       ?? 7,
     minAgeBeforeYieldCheck: u.minAgeBeforeYieldCheck ?? 60, // minutes before low yield can trigger close

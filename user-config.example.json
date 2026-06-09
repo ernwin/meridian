@@ -52,6 +52,7 @@
   "oorCooldownHours": 12,
   "minVolumeToRebalance": 1000,
   "stopLossPct": -50,
+  "dynamicStopLoss": true,
   "takeProfitPct": 5,
   "minFeePerTvl24h": 7,
   "minAgeBeforeYieldCheck": 60,
