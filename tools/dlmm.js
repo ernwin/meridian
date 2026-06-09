@@ -711,6 +711,10 @@ export async function deployPosition({
           entry_tvl,
           entry_volume,
           entry_holders,
+          // DSL: persist a per-position stop loss based on the deployed range's
+          // downside coverage. state.js#computeDynamicStopLoss maps this to a
+          // negative percentage (e.g. 12% downside -> -8% stop).
+          downside_pct: downsideCoveragePct,
         });
       }
 
@@ -853,6 +857,10 @@ export async function deployPosition({
       entry_tvl,
       entry_volume,
       entry_holders,
+      // DSL: persist a per-position stop loss based on the deployed range's
+      // downside coverage. state.js#computeDynamicStopLoss maps this to a
+      // negative percentage (e.g. 12% downside -> -8% stop).
+      downside_pct: downsideCoveragePct,
     });
 
     appendDecision({

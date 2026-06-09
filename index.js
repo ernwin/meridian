@@ -882,8 +882,16 @@ function getDeterministicCloseRule(position, managementConfig) {
     return false;
   })();
 
-  if (!pnlSuspect && position.pnl_pct != null && position.pnl_pct <= managementConfig.stopLossPct) {
-    return { action: "CLOSE", rule: 1, reason: "stop loss" };
+  // Rule 1: stop loss. DSL-aware — when the position has a per-position
+  // stop_loss_pct recorded (computed at deploy time from downside coverage)
+  // AND dynamicStopLoss is enabled in config, that threshold takes precedence
+  // over the global config stopLossPct fallback. state.js applies the same
+  // logic in updatePnlAndCheckExits; we mirror it here so the 30s poller and
+  // the slower management cycle agree.
+  const useDynamicDsl = managementConfig.dynamicStopLoss === true && tracked?.stop_loss_pct != null;
+  const activeStopLossPct = useDynamicDsl ? tracked.stop_loss_pct : managementConfig.stopLossPct;
+  if (!pnlSuspect && position.pnl_pct != null && activeStopLossPct != null && position.pnl_pct <= activeStopLossPct) {
+    return { action: "CLOSE", rule: 1, reason: useDynamicDsl ? "stop loss (dynamic)" : "stop loss" };
   }
   if (!pnlSuspect && position.pnl_pct != null && position.pnl_pct >= managementConfig.takeProfitPct) {
     return { action: "CLOSE", rule: 2, reason: "take profit" };

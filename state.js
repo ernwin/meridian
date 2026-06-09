@@ -52,6 +52,26 @@ function save(state) {
 // ─── Position Registry ─────────────────────────────────────────
 
 /**
+ * Compute the Dynamic Stop Loss percentage from downside coverage of the deployed range.
+ *
+ * The tighter the deployed range below the active price, the tighter the stop loss:
+ *   DSL = -round(downsideCoveragePct / 2.4 + 3)
+ *
+ * Worked examples:
+ *   5% downside  -> -5%  (tight range, snappy exit)
+ *   12% downside -> -8%  (medium range)
+ *   24% downside -> -13% (wide range, more room to breathe)
+ *
+ * Returns null when downside_pct is not finite (caller should store null and let
+ * the management fallback config apply).
+ */
+export function computeDynamicStopLoss(downside_pct) {
+  if (downside_pct == null || !Number.isFinite(Number(downside_pct))) return null;
+  const dsl = -Math.round(Number(downside_pct) / 2.4 + 3);
+  return Number.isFinite(dsl) ? dsl : null;
+}
+
+/**
  * Record a newly deployed position.
  */
 export function trackPosition({
@@ -73,6 +93,7 @@ export function trackPosition({
   entry_tvl = null,
   entry_volume = null,
   entry_holders = null,
+  downside_pct = null, // optional — when present, persists a per-position DSL threshold
 }) {
   const state = load();
   state.positions[position] = {
@@ -113,10 +134,15 @@ export function trackPosition({
     confirmed_trailing_exit_reason: null,
     confirmed_trailing_exit_until: null,
     trailing_active: false,
+    // Per-position dynamic stop loss. Set by the deployer when downside coverage
+    // is known; null when DSL is disabled or downside_pct was not provided.
+    // The management rule check (updatePnlAndCheckExits) prefers this over the
+    // global config stopLossPct fallback.
+    stop_loss_pct: computeDynamicStopLoss(downside_pct),
   };
   pushEvent(state, { action: "deploy", position, pool_name: pool_name || pool });
   save(state);
-  log("state", `Tracked new position: ${position} in pool ${pool}`);
+  log("state", `Tracked new position: ${position} in pool ${pool}${state.positions[position].stop_loss_pct != null ? ` (DSL: ${state.positions[position].stop_loss_pct}%)` : ""}`);
 }
 
 /**
@@ -419,10 +445,15 @@ export function updatePnlAndCheckExits(position_address, positionData, mgmtConfi
   if (changed) save(state);
 
   // ── Stop loss ──────────────────────────────────────────────────
-  if (!pnl_pct_suspicious && currentPnlPct != null && mgmtConfig.stopLossPct != null && currentPnlPct <= mgmtConfig.stopLossPct) {
+  // DSL-aware threshold: per-position stop_loss_pct (computed at deploy time from
+  // the deployed bin range's downside coverage) takes precedence when present and
+  // dynamicStopLoss is enabled. Otherwise fall back to the global config stopLossPct.
+  const useDynamic = mgmtConfig.dynamicStopLoss === true && pos.stop_loss_pct != null;
+  const activeStopLossPct = useDynamic ? pos.stop_loss_pct : mgmtConfig.stopLossPct;
+  if (!pnl_pct_suspicious && currentPnlPct != null && activeStopLossPct != null && currentPnlPct <= activeStopLossPct) {
     return {
       action: "STOP_LOSS",
-      reason: `Stop loss: PnL ${currentPnlPct.toFixed(2)}% <= ${mgmtConfig.stopLossPct}%`,
+      reason: `Stop loss: PnL ${currentPnlPct.toFixed(2)}% <= ${activeStopLossPct}%${useDynamic ? " (Dynamic)" : ""}`,
     };
   }
 
